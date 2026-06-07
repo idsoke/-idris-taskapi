@@ -22,6 +22,13 @@ npm run dev                 # starts the API on http://localhost:3000
 
 ## API
 
+A ready-to-use Postman collection lives in [`postman/`](./postman). Import both
+`idris-taskapi.postman_collection.json` and `idris-taskapi.postman_environment.json`
+into Postman, select the "idris-taskapi (local)" environment (or point `baseUrl` at
+your deployed URL), then run **Auth → Register** or **Auth → Login** — the JWT is
+saved automatically to the `{{token}}` variable and reused by every request under
+**Tasks**.
+
 ### Auth
 
 | Method | Path             | Description         |
