@@ -56,6 +56,40 @@ curl -X POST http://localhost:3000/tasks \
   -d '{"title":"Write README","description":"Document the API"}'
 ```
 
+## Deploying to Render
+
+This API is set up to run on [Render](https://render.com) (free tier) with a managed PostgreSQL database.
+
+1. **Create a PostgreSQL database**
+   - Render dashboard → **New** → **PostgreSQL** (free plan)
+   - Copy the **Internal Database URL** once it's provisioned
+
+2. **Create a Web Service**
+   - Render dashboard → **New** → **Web Service** → connect this repo
+   - Build command: `npm install`
+   - Start command: `npm start`
+   - Environment variables:
+     | Key              | Value                                   |
+     | ---------------- | --------------------------------------- |
+     | `DATABASE_URL`   | Internal Database URL from step 1        |
+     | `JWT_SECRET`     | a long random string (e.g. `openssl rand -hex 32`) |
+     | `JWT_EXPIRES_IN` | `1d`                                     |
+     | `NODE_ENV`       | `production`                             |
+
+   Render sets `PORT` automatically; the app already reads `process.env.PORT`.
+
+3. **Run the migration**
+   - After the first deploy, open the service's **Shell** tab and run:
+     ```bash
+     npm run migrate
+     ```
+   - This creates the `users` and `tasks` tables on the new database.
+
+4. **Verify**
+   - `GET https://<your-service>.onrender.com/health` should return `{"status":"ok"}`
+
+> Note: in production, the database connection uses SSL (`ssl: { rejectUnauthorized: false }`), enabled automatically when `NODE_ENV=production` — see `src/config/db.js`.
+
 ## Design notes
 
 - **Schema**: `users` and `tasks` are linked with a foreign key (`tasks.user_id`), with `ON DELETE CASCADE` so a user's tasks are removed if the account is deleted. An index on `tasks.user_id` keeps per-user listing fast.
