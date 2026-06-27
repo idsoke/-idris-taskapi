@@ -1,6 +1,37 @@
 # idris-taskapi
 
-REST API untuk manajemen task pribadi dengan autentikasi JWT. Dibangun menggunakan Express.js dan PostgreSQL sebagai portfolio project untuk mendemonstrasikan desain REST API, autentikasi, dan relational schema design.
+## Apa ini?
+
+**idris-taskapi** adalah backend service untuk aplikasi manajemen task / to-do list. Aplikasi ini menyediakan REST API yang bisa dipakai oleh frontend apa pun — web, mobile, atau desktop — untuk membuat, mengatur, dan melacak daftar pekerjaan harian secara terstruktur.
+
+Setiap user punya akun dan daftar task-nya sendiri yang terisolasi. Task bisa diberi judul, deskripsi, dan status pengerjaan (`pending` → `in_progress` → `done`), sehingga user bisa tahu mana yang sudah selesai dan mana yang masih perlu dikerjakan.
+
+## Untuk apa?
+
+Aplikasi ini cocok digunakan sebagai:
+
+- **Backend untuk aplikasi to-do list** — tinggal hubungkan ke frontend pilihan kamu (React, Vue, Flutter, dll.)
+- **Starter project** — fondasi siap pakai untuk membangun aplikasi produktivitas yang lebih kompleks
+- **Bahan belajar** — contoh nyata cara membangun REST API dengan autentikasi JWT, relational database, dan struktur MVC yang rapi
+
+## Kelebihan
+
+- **Autentikasi aman** — password di-hash dengan bcrypt, sesi dikelola via JWT tanpa menyimpan state di server
+- **Data terisolasi per user** — setiap user hanya bisa melihat dan mengubah task miliknya sendiri
+- **Ringan dan cepat** — dependensi minimal, tidak ada framework berat
+- **Mudah di-deploy** — siap jalan di Render (free tier) dengan PostgreSQL managed, atau lokal via Docker Compose
+- **Arsitektur bersih** — kode terpisah jelas antara routes, controllers, models, dan middleware; mudah dikembangkan
+
+## Siapa yang bisa memakai?
+
+| Pengguna | Kegunaan |
+|---|---|
+| **Frontend developer** | Pakai sebagai backend siap pakai untuk project todo app atau task manager |
+| **Pelajar / mahasiswa** | Pelajari cara kerja REST API, JWT auth, dan PostgreSQL dalam project nyata |
+| **Developer yang mau extend** | Jadikan boilerplate — tambah fitur label, due date, tim, dll. sesuai kebutuhan |
+| **Recruiter / interviewer** | Lihat contoh nyata kemampuan desain API, auth, dan database schema |
+
+---
 
 ## Tech Stack
 
