@@ -111,22 +111,30 @@ Semua endpoint task memerlukan header `Authorization: Bearer <token>`.
 
 `status` menerima nilai: `pending`, `in_progress`, atau `done`.
 
+`due_date` menggunakan format ISO 8601, contoh: `2025-12-31T17:00:00Z`. Opsional, bisa di-set ke `null` untuk menghapus deadline.
+
+Query params untuk `GET /tasks`:
+- `?status=pending` — filter berdasarkan status
+- `?overdue=true` — tampilkan task yang sudah melewati deadline dan belum selesai
+
+List task diurutkan: task dengan `due_date` terdekat di atas, task tanpa `due_date` di bawah.
+
 ```bash
-# Buat task
+# Buat task dengan deadline
 curl -X POST http://localhost:3000/tasks \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"title":"Belajar Docker","description":"Pelajari dasar Docker dan Compose"}'
+  -d '{"title":"Belajar Docker","due_date":"2025-12-31T17:00:00Z"}'
 
-# List task dengan filter status
-curl http://localhost:3000/tasks?status=in_progress \
+# List task yang sudah overdue
+curl "http://localhost:3000/tasks?overdue=true" \
   -H "Authorization: Bearer $TOKEN"
 
-# Update status
+# Update status dan hapus deadline
 curl -X PATCH http://localhost:3000/tasks/1 \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"status":"done"}'
+  -d '{"status":"done","due_date":null}'
 ```
 
 ## Deploy ke Render
@@ -174,6 +182,7 @@ tasks
   title         TEXT NOT NULL
   description   TEXT
   status        TEXT NOT NULL DEFAULT 'pending'
+  due_date      TIMESTAMPTZ
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 

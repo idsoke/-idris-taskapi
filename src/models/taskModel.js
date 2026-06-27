@@ -1,26 +1,32 @@
 const pool = require('../config/db');
 
-async function createTask({ userId, title, description }) {
+async function createTask({ userId, title, description, dueDate }) {
   const result = await pool.query(
-    `INSERT INTO tasks (user_id, title, description)
-     VALUES ($1, $2, $3)
+    `INSERT INTO tasks (user_id, title, description, due_date)
+     VALUES ($1, $2, $3, $4)
      RETURNING *`,
-    [userId, title, description || null]
+    [userId, title, description || null, dueDate || null]
   );
   return result.rows[0];
 }
 
-async function listTasksByUser(userId, { status } = {}) {
+async function listTasksByUser(userId, { status, overdue } = {}) {
+  const conditions = ['user_id = $1'];
+  const params = [userId];
+
   if (status) {
-    const result = await pool.query(
-      'SELECT * FROM tasks WHERE user_id = $1 AND status = $2 ORDER BY created_at DESC',
-      [userId, status]
-    );
-    return result.rows;
+    params.push(status);
+    conditions.push(`status = $${params.length}`);
   }
+
+  if (overdue === true) {
+    conditions.push(`due_date < now() AND status != 'done'`);
+  }
+
+  const where = conditions.join(' AND ');
   const result = await pool.query(
-    'SELECT * FROM tasks WHERE user_id = $1 ORDER BY created_at DESC',
-    [userId]
+    `SELECT * FROM tasks WHERE ${where} ORDER BY due_date ASC NULLS LAST, created_at DESC`,
+    params
   );
   return result.rows;
 }
@@ -34,16 +40,17 @@ async function findTaskById(id, userId) {
 }
 
 async function updateTask(id, userId, fields) {
-  const { title, description, status } = fields;
+  const { title, description, status, dueDate } = fields;
   const result = await pool.query(
     `UPDATE tasks
      SET title = COALESCE($1, title),
          description = COALESCE($2, description),
          status = COALESCE($3, status),
+         due_date = CASE WHEN $4 THEN $5 ELSE due_date END,
          updated_at = now()
-     WHERE id = $4 AND user_id = $5
+     WHERE id = $6 AND user_id = $7
      RETURNING *`,
-    [title ?? null, description ?? null, status ?? null, id, userId]
+    [title ?? null, description ?? null, status ?? null, 'dueDate' in fields, dueDate ?? null, id, userId]
   );
   return result.rows[0];
 }

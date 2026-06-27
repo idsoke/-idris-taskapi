@@ -9,22 +9,26 @@ const {
 const VALID_STATUSES = ['pending', 'in_progress', 'done'];
 
 async function create(req, res) {
-  const { title, description } = req.body;
+  const { title, description, due_date } = req.body;
   if (!title) {
     return res.status(400).json({ error: 'title is required' });
   }
 
-  const task = await createTask({ userId: req.user.id, title, description });
+  if (due_date && isNaN(Date.parse(due_date))) {
+    return res.status(400).json({ error: 'due_date must be a valid ISO 8601 date' });
+  }
+
+  const task = await createTask({ userId: req.user.id, title, description, dueDate: due_date });
   res.status(201).json(task);
 }
 
 async function list(req, res) {
-  const { status } = req.query;
+  const { status, overdue } = req.query;
   if (status && !VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` });
   }
 
-  const tasks = await listTasksByUser(req.user.id, { status });
+  const tasks = await listTasksByUser(req.user.id, { status, overdue: overdue === 'true' });
   res.json(tasks);
 }
 
@@ -42,7 +46,16 @@ async function update(req, res) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` });
   }
 
-  const task = await updateTask(req.params.id, req.user.id, { title, description, status });
+  const fields = { title, description, status };
+  if ('due_date' in req.body) {
+    const due_date = req.body.due_date;
+    if (due_date !== null && isNaN(Date.parse(due_date))) {
+      return res.status(400).json({ error: 'due_date must be a valid ISO 8601 date or null' });
+    }
+    fields.dueDate = due_date;
+  }
+
+  const task = await updateTask(req.params.id, req.user.id, fields);
   if (!task) {
     return res.status(404).json({ error: 'Task not found' });
   }
