@@ -1,104 +1,187 @@
 # idris-taskapi
 
-A small Task Management REST API built with Express and PostgreSQL, with JWT-based authentication. Built as a portfolio project to demonstrate REST API design, authentication, and relational schema design.
+REST API untuk manajemen task pribadi dengan autentikasi JWT. Dibangun menggunakan Express.js dan PostgreSQL sebagai portfolio project untuk mendemonstrasikan desain REST API, autentikasi, dan relational schema design.
 
-## Stack
+## Tech Stack
 
-- Node.js + Express
-- PostgreSQL (via `pg`)
-- JWT authentication (`jsonwebtoken`) + password hashing (`bcrypt`)
+| Komponen | Teknologi |
+|---|---|
+| Runtime | Node.js |
+| Framework | Express.js |
+| Database | PostgreSQL 16 |
+| Auth | JWT (`jsonwebtoken`) |
+| Password hashing | bcrypt |
+| DB driver | `pg` |
 
-## Getting started
+## Cara Menjalankan
 
 ```bash
 cp .env.example .env
-# edit .env if needed (DATABASE_URL, JWT_SECRET)
+# Edit .env — wajib isi JWT_SECRET dengan string random yang panjang
 
-docker compose up -d        # starts PostgreSQL on localhost:5432
+docker compose up -d   # jalankan PostgreSQL di localhost:5432
 npm install
-npm run migrate             # creates users and tasks tables
-npm run dev                 # starts the API on http://localhost:3000
+npm run migrate        # buat tabel users dan tasks
+npm run dev            # server berjalan di http://localhost:3000
 ```
+
+## Environment Variables
+
+| Variable | Wajib | Default | Keterangan |
+|---|---|---|---|
+| `PORT` | | `3000` | Port server |
+| `DATABASE_URL` | Ya | — | PostgreSQL connection string |
+| `JWT_SECRET` | Ya | — | Secret key untuk signing JWT |
+| `JWT_EXPIRES_IN` | | `1d` | Durasi token JWT |
 
 ## API
 
-A ready-to-use Postman collection lives in [`postman/`](./postman). Import both
-`idris-taskapi.postman_collection.json` and `idris-taskapi.postman_environment.json`
-into Postman, select the "idris-taskapi (local)" environment (or point `baseUrl` at
-your deployed URL), then run **Auth → Register** or **Auth → Login** — the JWT is
-saved automatically to the `{{token}}` variable and reused by every request under
-**Tasks**.
+Postman collection tersedia di [`postman/`](./postman). Import `idris-taskapi.postman_collection.json` dan `idris-taskapi.postman_environment.json`, pilih environment **idris-taskapi (local)**, lalu jalankan **Auth → Register** atau **Auth → Login** — token JWT tersimpan otomatis ke variabel `{{token}}` dan dipakai di semua request Tasks.
+
+### Health Check
+
+```
+GET /health
+→ { "status": "ok" }
+```
 
 ### Auth
 
-| Method | Path             | Description         |
-| ------ | ---------------- | ------------------- |
-| POST   | `/auth/register` | Create an account   |
-| POST   | `/auth/login`    | Get a JWT token     |
+| Method | Path | Keterangan |
+|---|---|---|
+| POST | `/auth/register` | Daftar akun baru |
+| POST | `/auth/login` | Login, dapat JWT token |
 
 ```bash
+# Register
 curl -X POST http://localhost:3000/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"jane@example.com","password":"secret123"}'
+
+# Login
+curl -X POST http://localhost:3000/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"jane@example.com","password":"secret123"}'
 ```
 
-Use the returned `token` as a Bearer token for the endpoints below.
+Gunakan `token` dari response sebagai Bearer token di semua request Tasks.
 
-### Tasks (require `Authorization: Bearer <token>`)
+### Tasks
 
-| Method | Path          | Description                          |
-| ------ | ------------- | ------------------------------------ |
-| POST   | `/tasks`      | Create a task                         |
-| GET    | `/tasks`      | List your tasks (optional `?status=`) |
-| GET    | `/tasks/:id`  | Get a single task                     |
-| PATCH  | `/tasks/:id`  | Update title/description/status       |
-| DELETE | `/tasks/:id`  | Delete a task                         |
+Semua endpoint task memerlukan header `Authorization: Bearer <token>`.
 
-`status` accepts `pending`, `in_progress`, or `done`.
+| Method | Path | Keterangan |
+|---|---|---|
+| POST | `/tasks` | Buat task baru |
+| GET | `/tasks` | List semua task (opsional `?status=`) |
+| GET | `/tasks/:id` | Detail satu task |
+| PATCH | `/tasks/:id` | Update title / description / status |
+| DELETE | `/tasks/:id` | Hapus task |
+
+`status` menerima nilai: `pending`, `in_progress`, atau `done`.
 
 ```bash
+# Buat task
 curl -X POST http://localhost:3000/tasks \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"title":"Write README","description":"Document the API"}'
+  -d '{"title":"Belajar Docker","description":"Pelajari dasar Docker dan Compose"}'
+
+# List task dengan filter status
+curl http://localhost:3000/tasks?status=in_progress \
+  -H "Authorization: Bearer $TOKEN"
+
+# Update status
+curl -X PATCH http://localhost:3000/tasks/1 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"done"}'
 ```
 
-## Deploying to Render
+## Deploy ke Render
 
-This API is set up to run on [Render](https://render.com) (free tier) with a managed PostgreSQL database.
+API ini siap dijalankan di [Render](https://render.com) (free tier).
 
-1. **Create a PostgreSQL database**
-   - Render dashboard → **New** → **PostgreSQL** (free plan)
-   - Copy the **Internal Database URL** once it's provisioned
+1. **Buat PostgreSQL database** di Render → salin **Internal Database URL**
 
-2. **Create a Web Service**
-   - Render dashboard → **New** → **Web Service** → connect this repo
+2. **Buat Web Service** — hubungkan repo ini
    - Build command: `npm install`
    - Start command: `npm start`
    - Environment variables:
-     | Key              | Value                                   |
-     | ---------------- | --------------------------------------- |
-     | `DATABASE_URL`   | Internal Database URL from step 1        |
-     | `JWT_SECRET`     | a long random string (e.g. `openssl rand -hex 32`) |
-     | `JWT_EXPIRES_IN` | `1d`                                     |
-     | `NODE_ENV`       | `production`                             |
 
-   Render sets `PORT` automatically; the app already reads `process.env.PORT`.
+     | Key | Value |
+     |---|---|
+     | `DATABASE_URL` | Internal Database URL dari langkah 1 |
+     | `JWT_SECRET` | String random panjang (`openssl rand -hex 32`) |
+     | `JWT_EXPIRES_IN` | `1d` |
+     | `NODE_ENV` | `production` |
 
-3. **Run the migration**
-   - After the first deploy, open the service's **Shell** tab and run:
-     ```bash
-     npm run migrate
-     ```
-   - This creates the `users` and `tasks` tables on the new database.
+   Render mengisi `PORT` secara otomatis.
 
-4. **Verify**
-   - `GET https://<your-service>.onrender.com/health` should return `{"status":"ok"}`
+3. **Jalankan migrasi** via Shell tab di Render:
+   ```bash
+   npm run migrate
+   ```
 
-> Note: in production, the database connection uses SSL (`ssl: { rejectUnauthorized: false }`), enabled automatically when `NODE_ENV=production` — see `src/config/db.js`.
+4. **Verifikasi**: `GET https://<your-service>.onrender.com/health` harus mengembalikan `{"status":"ok"}`
 
-## Design notes
+> Koneksi database di production menggunakan SSL (`ssl: { rejectUnauthorized: false }`), diaktifkan otomatis saat `NODE_ENV=production` — lihat `src/config/db.js`.
 
-- **Schema**: `users` and `tasks` are linked with a foreign key (`tasks.user_id`), with `ON DELETE CASCADE` so a user's tasks are removed if the account is deleted. An index on `tasks.user_id` keeps per-user listing fast.
-- **Auth**: passwords are hashed with bcrypt before storage; JWTs carry the user id, email, and role so the API stays stateless.
-- **Authorization**: every task query is scoped to `req.user.id`, so users can only see and modify their own tasks.
+## Skema Database
+
+```sql
+users
+  id            SERIAL PRIMARY KEY
+  email         TEXT UNIQUE NOT NULL
+  password_hash TEXT NOT NULL
+  role          TEXT NOT NULL DEFAULT 'user'
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+
+tasks
+  id            SERIAL PRIMARY KEY
+  user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+  title         TEXT NOT NULL
+  description   TEXT
+  status        TEXT NOT NULL DEFAULT 'pending'
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+
+INDEX idx_tasks_user_id ON tasks(user_id)
+```
+
+## Struktur Project
+
+```
+idris-taskapi/
+├── migrations/
+│   ├── 001_init.sql        # DDL tabel users dan tasks
+│   └── run.js              # Script runner migrasi
+├── src/
+│   ├── config/
+│   │   └── db.js           # PostgreSQL connection pool
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   └── taskController.js
+│   ├── middleware/
+│   │   └── auth.js         # JWT verification middleware
+│   ├── models/
+│   │   ├── userModel.js
+│   │   └── taskModel.js
+│   ├── routes/
+│   │   ├── authRoutes.js
+│   │   └── taskRoutes.js
+│   └── index.js            # Entry point
+├── docker-compose.yml
+├── .env.example
+└── package.json
+```
+
+## Catatan Desain
+
+- **Schema**: `users` dan `tasks` dihubungkan via foreign key dengan `ON DELETE CASCADE` — task user ikut terhapus jika akun dihapus. Index pada `tasks.user_id` menjaga performa query per-user.
+- **Auth**: password di-hash bcrypt sebelum disimpan; JWT menyimpan `id`, `email`, dan `role` agar API tetap stateless.
+- **Authorization**: setiap query task di-scope ke `req.user.id`, sehingga user hanya bisa melihat dan memodifikasi task miliknya sendiri.
+
+## Roadmap
+
+Lihat [ROADMAP.md](./ROADMAP.md) untuk rencana pengembangan ke depan.
