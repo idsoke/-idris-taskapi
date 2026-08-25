@@ -19,9 +19,9 @@ Dokumen ini berisi rencana pengembangan aplikasi dari kondisi saat ini menuju pr
 > **Prioritas:** Tinggi. Fondasi yang kuat sebelum menambah fitur.
 
 ### Testing
-- [ ] Unit test untuk controller dan model (Jest + Supertest)
-- [ ] Integration test: register → login → CRUD task end-to-end
-- [ ] Test coverage minimal 80%
+- [x] Unit test untuk controller dan model (Jest + Supertest)
+- [x] Integration test: register → login → CRUD task end-to-end
+- [x] Test coverage minimal 80% (dicek otomatis di CI, threshold di `package.json`)
 
 ### Validasi & Error Handling
 - [ ] Validasi input yang lebih ketat (panjang password, format email) — pakai `zod` atau `joi`

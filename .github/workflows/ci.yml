@@ -43,8 +43,8 @@ jobs:
         env:
           DATABASE_URL: postgres://taskapi:taskapi@localhost:5432/taskapi
 
-      - name: Run tests
-        run: npm test
+      - name: Run tests with coverage
+        run: npm run test:coverage
         env:
           DATABASE_URL: postgres://taskapi:taskapi@localhost:5432/taskapi
           JWT_SECRET: test-secret-key

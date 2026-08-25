@@ -14,6 +14,14 @@ describe('GET /health', () => {
   });
 });
 
+describe('unknown route', () => {
+  it('returns 404', async () => {
+    const res = await request(app).get('/this-route-does-not-exist');
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toEqual({ error: 'Not found' });
+  });
+});
+
 describe('POST /auth/register', () => {
   it('registers a new user and returns token', async () => {
     const res = await request(app)
@@ -66,6 +74,37 @@ describe('POST /auth/login', () => {
       .post('/auth/login')
       .send({ email, password: 'wrongpassword' });
 
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('returns 401 for an email that was never registered', async () => {
+    const res = await request(app)
+      .post('/auth/login')
+      .send({ email: `nobody_${Date.now()}@example.com`, password: 'whatever123' });
+
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('returns 400 when fields are missing', async () => {
+    const res = await request(app).post('/auth/login').send({ email: 'nopassword@example.com' });
+
+    expect(res.statusCode).toBe(400);
+  });
+});
+
+describe('requireAuth middleware', () => {
+  it('returns 401 when the Authorization header is missing', async () => {
+    const res = await request(app).get('/tasks');
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('returns 401 when the Authorization scheme is not Bearer', async () => {
+    const res = await request(app).get('/tasks').set('Authorization', 'Basic abc123');
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('returns 401 for a malformed token', async () => {
+    const res = await request(app).get('/tasks').set('Authorization', 'Bearer not-a-real-token');
     expect(res.statusCode).toBe(401);
   });
 });
