@@ -106,28 +106,35 @@ Semua endpoint task memerlukan header `Authorization: Bearer <token>`.
 | POST | `/tasks` | Buat task baru |
 | GET | `/tasks` | List semua task (opsional `?status=`) |
 | GET | `/tasks/:id` | Detail satu task |
-| PATCH | `/tasks/:id` | Update title / description / status |
+| PATCH | `/tasks/:id` | Update title / description / status / priority |
 | DELETE | `/tasks/:id` | Hapus task |
 
 `status` menerima nilai: `pending`, `in_progress`, atau `done`.
+
+`priority` menerima nilai: `low`, `medium`, atau `high`. Opsional saat membuat task — default `medium`.
 
 `due_date` menggunakan format ISO 8601, contoh: `2025-12-31T17:00:00Z`. Opsional, bisa di-set ke `null` untuk menghapus deadline.
 
 Query params untuk `GET /tasks`:
 - `?status=pending` — filter berdasarkan status
+- `?priority=high` — filter berdasarkan priority
 - `?overdue=true` — tampilkan task yang sudah melewati deadline dan belum selesai
 
 List task diurutkan: task dengan `due_date` terdekat di atas, task tanpa `due_date` di bawah.
 
 ```bash
-# Buat task dengan deadline
+# Buat task dengan deadline dan priority
 curl -X POST http://localhost:3000/tasks \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"title":"Belajar Docker","due_date":"2025-12-31T17:00:00Z"}'
+  -d '{"title":"Belajar Docker","due_date":"2025-12-31T17:00:00Z","priority":"high"}'
 
 # List task yang sudah overdue
 curl "http://localhost:3000/tasks?overdue=true" \
+  -H "Authorization: Bearer $TOKEN"
+
+# List task dengan priority high
+curl "http://localhost:3000/tasks?priority=high" \
   -H "Authorization: Bearer $TOKEN"
 
 # Update status dan hapus deadline
@@ -183,6 +190,7 @@ tasks
   description   TEXT
   status        TEXT NOT NULL DEFAULT 'pending'
   due_date      TIMESTAMPTZ
+  priority      TEXT NOT NULL DEFAULT 'medium'
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 

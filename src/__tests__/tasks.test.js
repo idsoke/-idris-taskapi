@@ -43,6 +43,35 @@ describe('POST /tasks', () => {
     expect(new Date(res.body.due_date).toISOString()).toBe('2026-09-01T00:00:00.000Z');
   });
 
+  it('defaults priority to medium when not provided', async () => {
+    const res = await request(app)
+      .post('/tasks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'No priority given' });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.priority).toBe('medium');
+  });
+
+  it('creates a task with an explicit priority', async () => {
+    const res = await request(app)
+      .post('/tasks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Urgent fix', priority: 'high' });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.priority).toBe('high');
+  });
+
+  it('returns 400 for an invalid priority', async () => {
+    const res = await request(app)
+      .post('/tasks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Bad priority', priority: 'urgent' });
+
+    expect(res.statusCode).toBe(400);
+  });
+
   it('returns 400 when title is missing', async () => {
     const res = await request(app)
       .post('/tasks')
@@ -104,6 +133,29 @@ describe('GET /tasks', () => {
   it('returns 400 for an invalid status filter', async () => {
     const res = await request(app)
       .get('/tasks?status=bogus')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('filters by priority', async () => {
+    const created = await request(app)
+      .post('/tasks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Low priority chore', priority: 'low' });
+
+    const res = await request(app)
+      .get('/tasks?priority=low')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.every((t) => t.priority === 'low')).toBe(true);
+    expect(res.body.some((t) => t.id === created.body.id)).toBe(true);
+  });
+
+  it('returns 400 for an invalid priority filter', async () => {
+    const res = await request(app)
+      .get('/tasks?priority=urgent')
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.statusCode).toBe(400);
@@ -210,6 +262,21 @@ describe('PATCH /tasks/:id', () => {
     expect(res.body.due_date).toBeNull();
   });
 
+  it('updates priority', async () => {
+    const created = await request(app)
+      .post('/tasks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Bump priority' });
+
+    const res = await request(app)
+      .patch(`/tasks/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ priority: 'high' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.priority).toBe('high');
+  });
+
   it('returns 400 for an invalid status', async () => {
     const created = await request(app)
       .post('/tasks')
@@ -220,6 +287,20 @@ describe('PATCH /tasks/:id', () => {
       .patch(`/tasks/${created.body.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ status: 'bogus' });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('returns 400 for an invalid priority', async () => {
+    const created = await request(app)
+      .post('/tasks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Invalid priority target' });
+
+    const res = await request(app)
+      .patch(`/tasks/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ priority: 'urgent' });
 
     expect(res.statusCode).toBe(400);
   });

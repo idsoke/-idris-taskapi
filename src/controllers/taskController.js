@@ -7,9 +7,10 @@ const {
 } = require('../models/taskModel');
 
 const VALID_STATUSES = ['pending', 'in_progress', 'done'];
+const VALID_PRIORITIES = ['low', 'medium', 'high'];
 
 async function create(req, res) {
-  const { title, description, due_date } = req.body;
+  const { title, description, due_date, priority } = req.body;
   if (!title) {
     return res.status(400).json({ error: 'title is required' });
   }
@@ -18,17 +19,31 @@ async function create(req, res) {
     return res.status(400).json({ error: 'due_date must be a valid ISO 8601 date' });
   }
 
-  const task = await createTask({ userId: req.user.id, title, description, dueDate: due_date });
+  if (priority && !VALID_PRIORITIES.includes(priority)) {
+    return res.status(400).json({ error: `priority must be one of: ${VALID_PRIORITIES.join(', ')}` });
+  }
+
+  const task = await createTask({
+    userId: req.user.id,
+    title,
+    description,
+    dueDate: due_date,
+    priority,
+  });
   res.status(201).json(task);
 }
 
 async function list(req, res) {
-  const { status, overdue } = req.query;
+  const { status, overdue, priority } = req.query;
   if (status && !VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` });
   }
 
-  const tasks = await listTasksByUser(req.user.id, { status, overdue: overdue === 'true' });
+  if (priority && !VALID_PRIORITIES.includes(priority)) {
+    return res.status(400).json({ error: `priority must be one of: ${VALID_PRIORITIES.join(', ')}` });
+  }
+
+  const tasks = await listTasksByUser(req.user.id, { status, overdue: overdue === 'true', priority });
   res.json(tasks);
 }
 
@@ -41,12 +56,16 @@ async function getOne(req, res) {
 }
 
 async function update(req, res) {
-  const { title, description, status } = req.body;
+  const { title, description, status, priority } = req.body;
   if (status && !VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` });
   }
 
-  const fields = { title, description, status };
+  if (priority && !VALID_PRIORITIES.includes(priority)) {
+    return res.status(400).json({ error: `priority must be one of: ${VALID_PRIORITIES.join(', ')}` });
+  }
+
+  const fields = { title, description, status, priority };
   if ('due_date' in req.body) {
     const due_date = req.body.due_date;
     if (due_date !== null && isNaN(Date.parse(due_date))) {
