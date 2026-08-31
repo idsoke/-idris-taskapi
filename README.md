@@ -106,7 +106,7 @@ Semua endpoint task memerlukan header `Authorization: Bearer <token>`.
 | POST | `/tasks` | Buat task baru |
 | GET | `/tasks` | List semua task (opsional `?status=`) |
 | GET | `/tasks/:id` | Detail satu task |
-| PATCH | `/tasks/:id` | Update title / description / status / priority |
+| PATCH | `/tasks/:id` | Update title / description / status / priority / labels |
 | DELETE | `/tasks/:id` | Hapus task |
 
 `status` menerima nilai: `pending`, `in_progress`, atau `done`.
@@ -115,19 +115,24 @@ Semua endpoint task memerlukan header `Authorization: Bearer <token>`.
 
 `due_date` menggunakan format ISO 8601, contoh: `2025-12-31T17:00:00Z`. Opsional, bisa di-set ke `null` untuk menghapus deadline.
 
+`labels` menerima array string bebas, contoh: `["work", "urgent"]`. Opsional — default array kosong. Nilai di-trim dan di-dedupe otomatis. Saat update, mengirim `labels` akan mengganti seluruh daftar label (kirim `[]` untuk menghapus semua label).
+
 Query params untuk `GET /tasks`:
 - `?status=pending` — filter berdasarkan status
 - `?priority=high` — filter berdasarkan priority
+- `?label=work` — filter task yang memiliki label tertentu
 - `?overdue=true` — tampilkan task yang sudah melewati deadline dan belum selesai
+
+Query params bisa dikombinasikan, contoh: `?status=pending&priority=high&label=work`.
 
 List task diurutkan: task dengan `due_date` terdekat di atas, task tanpa `due_date` di bawah.
 
 ```bash
-# Buat task dengan deadline dan priority
+# Buat task dengan deadline, priority, dan label
 curl -X POST http://localhost:3000/tasks \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"title":"Belajar Docker","due_date":"2025-12-31T17:00:00Z","priority":"high"}'
+  -d '{"title":"Belajar Docker","due_date":"2025-12-31T17:00:00Z","priority":"high","labels":["work","urgent"]}'
 
 # List task yang sudah overdue
 curl "http://localhost:3000/tasks?overdue=true" \
@@ -135,6 +140,10 @@ curl "http://localhost:3000/tasks?overdue=true" \
 
 # List task dengan priority high
 curl "http://localhost:3000/tasks?priority=high" \
+  -H "Authorization: Bearer $TOKEN"
+
+# List task dengan label "work"
+curl "http://localhost:3000/tasks?label=work" \
   -H "Authorization: Bearer $TOKEN"
 
 # Update status dan hapus deadline
@@ -191,10 +200,12 @@ tasks
   status        TEXT NOT NULL DEFAULT 'pending'
   due_date      TIMESTAMPTZ
   priority      TEXT NOT NULL DEFAULT 'medium'
+  labels        TEXT[] NOT NULL DEFAULT '{}'
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 
 INDEX idx_tasks_user_id ON tasks(user_id)
+INDEX idx_tasks_labels ON tasks USING GIN (labels)
 ```
 
 ## Struktur Project

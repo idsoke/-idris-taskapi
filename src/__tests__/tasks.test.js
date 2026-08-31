@@ -72,6 +72,45 @@ describe('POST /tasks', () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it('creates a task with labels', async () => {
+    const res = await request(app)
+      .post('/tasks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Tagged task', labels: ['work', 'urgent'] });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.labels).toEqual(['work', 'urgent']);
+  });
+
+  it('trims and dedupes labels on create', async () => {
+    const res = await request(app)
+      .post('/tasks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Messy labels', labels: [' work ', 'work', '', '  '] });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.labels).toEqual(['work']);
+  });
+
+  it('defaults labels to an empty array when not provided', async () => {
+    const res = await request(app)
+      .post('/tasks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'No labels given' });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.labels).toEqual([]);
+  });
+
+  it('returns 400 when labels is not an array of strings', async () => {
+    const res = await request(app)
+      .post('/tasks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Bad labels', labels: ['work', 42] });
+
+    expect(res.statusCode).toBe(400);
+  });
+
   it('returns 400 when title is missing', async () => {
     const res = await request(app)
       .post('/tasks')
@@ -159,6 +198,21 @@ describe('GET /tasks', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.statusCode).toBe(400);
+  });
+
+  it('filters by label', async () => {
+    const created = await request(app)
+      .post('/tasks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Personal errand', labels: ['personal'] });
+
+    const res = await request(app)
+      .get('/tasks?label=personal')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.every((t) => t.labels.includes('personal'))).toBe(true);
+    expect(res.body.some((t) => t.id === created.body.id)).toBe(true);
   });
 
   it('filters overdue tasks', async () => {
@@ -275,6 +329,50 @@ describe('PATCH /tasks/:id', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body.priority).toBe('high');
+  });
+
+  it('replaces labels', async () => {
+    const created = await request(app)
+      .post('/tasks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Relabel me', labels: ['work'] });
+
+    const res = await request(app)
+      .patch(`/tasks/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ labels: ['personal', 'urgent'] });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.labels).toEqual(['personal', 'urgent']);
+  });
+
+  it('clears labels when set to an empty array', async () => {
+    const created = await request(app)
+      .post('/tasks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Unlabel me', labels: ['work'] });
+
+    const res = await request(app)
+      .patch(`/tasks/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ labels: [] });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.labels).toEqual([]);
+  });
+
+  it('returns 400 for invalid labels on update', async () => {
+    const created = await request(app)
+      .post('/tasks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Bad relabel target' });
+
+    const res = await request(app)
+      .patch(`/tasks/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ labels: 'not-an-array' });
+
+    expect(res.statusCode).toBe(400);
   });
 
   it('returns 400 for an invalid status', async () => {

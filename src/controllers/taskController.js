@@ -9,8 +9,17 @@ const {
 const VALID_STATUSES = ['pending', 'in_progress', 'done'];
 const VALID_PRIORITIES = ['low', 'medium', 'high'];
 
+function normalizeLabels(labels) {
+  if (!Array.isArray(labels) || !labels.every((l) => typeof l === 'string')) {
+    return { error: 'labels must be an array of strings' };
+  }
+
+  const normalized = [...new Set(labels.map((l) => l.trim()).filter(Boolean))];
+  return { value: normalized };
+}
+
 async function create(req, res) {
-  const { title, description, due_date, priority } = req.body;
+  const { title, description, due_date, priority, labels } = req.body;
   if (!title) {
     return res.status(400).json({ error: 'title is required' });
   }
@@ -23,18 +32,28 @@ async function create(req, res) {
     return res.status(400).json({ error: `priority must be one of: ${VALID_PRIORITIES.join(', ')}` });
   }
 
+  let normalizedLabels;
+  if (labels !== undefined) {
+    const result = normalizeLabels(labels);
+    if (result.error) {
+      return res.status(400).json({ error: result.error });
+    }
+    normalizedLabels = result.value;
+  }
+
   const task = await createTask({
     userId: req.user.id,
     title,
     description,
     dueDate: due_date,
     priority,
+    labels: normalizedLabels,
   });
   res.status(201).json(task);
 }
 
 async function list(req, res) {
-  const { status, overdue, priority } = req.query;
+  const { status, overdue, priority, label } = req.query;
   if (status && !VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` });
   }
@@ -43,7 +62,12 @@ async function list(req, res) {
     return res.status(400).json({ error: `priority must be one of: ${VALID_PRIORITIES.join(', ')}` });
   }
 
-  const tasks = await listTasksByUser(req.user.id, { status, overdue: overdue === 'true', priority });
+  const tasks = await listTasksByUser(req.user.id, {
+    status,
+    overdue: overdue === 'true',
+    priority,
+    label,
+  });
   res.json(tasks);
 }
 
@@ -56,7 +80,7 @@ async function getOne(req, res) {
 }
 
 async function update(req, res) {
-  const { title, description, status, priority } = req.body;
+  const { title, description, status, priority, labels } = req.body;
   if (status && !VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` });
   }
@@ -72,6 +96,14 @@ async function update(req, res) {
       return res.status(400).json({ error: 'due_date must be a valid ISO 8601 date or null' });
     }
     fields.dueDate = due_date;
+  }
+
+  if (labels !== undefined) {
+    const result = normalizeLabels(labels);
+    if (result.error) {
+      return res.status(400).json({ error: result.error });
+    }
+    fields.labels = result.value;
   }
 
   const task = await updateTask(req.params.id, req.user.id, fields);

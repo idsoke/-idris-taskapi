@@ -1,16 +1,16 @@
 const pool = require('../config/db');
 
-async function createTask({ userId, title, description, dueDate, priority }) {
+async function createTask({ userId, title, description, dueDate, priority, labels }) {
   const result = await pool.query(
-    `INSERT INTO tasks (user_id, title, description, due_date, priority)
-     VALUES ($1, $2, $3, $4, COALESCE($5, 'medium'))
+    `INSERT INTO tasks (user_id, title, description, due_date, priority, labels)
+     VALUES ($1, $2, $3, $4, COALESCE($5, 'medium'), COALESCE($6::text[], '{}'))
      RETURNING *`,
-    [userId, title, description || null, dueDate || null, priority || null]
+    [userId, title, description || null, dueDate || null, priority || null, labels || null]
   );
   return result.rows[0];
 }
 
-async function listTasksByUser(userId, { status, overdue, priority } = {}) {
+async function listTasksByUser(userId, { status, overdue, priority, label } = {}) {
   const conditions = ['user_id = $1'];
   const params = [userId];
 
@@ -22,6 +22,11 @@ async function listTasksByUser(userId, { status, overdue, priority } = {}) {
   if (priority) {
     params.push(priority);
     conditions.push(`priority = $${params.length}`);
+  }
+
+  if (label) {
+    params.push(label);
+    conditions.push(`labels @> ARRAY[$${params.length}]::text[]`);
   }
 
   if (overdue === true) {
@@ -45,7 +50,7 @@ async function findTaskById(id, userId) {
 }
 
 async function updateTask(id, userId, fields) {
-  const { title, description, status, dueDate, priority } = fields;
+  const { title, description, status, dueDate, priority, labels } = fields;
   const result = await pool.query(
     `UPDATE tasks
      SET title = COALESCE($1, title),
@@ -53,8 +58,9 @@ async function updateTask(id, userId, fields) {
          status = COALESCE($3, status),
          priority = COALESCE($4, priority),
          due_date = CASE WHEN $5 THEN $6 ELSE due_date END,
+         labels = COALESCE($7::text[], labels),
          updated_at = now()
-     WHERE id = $7 AND user_id = $8
+     WHERE id = $8 AND user_id = $9
      RETURNING *`,
     [
       title ?? null,
@@ -63,6 +69,7 @@ async function updateTask(id, userId, fields) {
       priority ?? null,
       'dueDate' in fields,
       dueDate ?? null,
+      labels ?? null,
       id,
       userId,
     ]
